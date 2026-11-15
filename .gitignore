@@ -1,0 +1,17 @@
+# Sensitive / local-only env files
+.env
+.env.local
+infra/.env
+
+# Runtime data
+infra/pgadmin/
+infra/backup/*
+!infra/backup/.gitkeep
+infra/mssql-data/
+infra/postgres-data/
+
+# Backups
+*.bak
+
+# OS junk
+.DS_Store
