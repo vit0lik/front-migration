@@ -1,210 +1,164 @@
--- схема
+-- OLAP: структура ресурсов
+
 DO $$
 BEGIN
     CREATE SCHEMA IF NOT EXISTS olap;
-    CREATE SCHEMA IF NOT EXISTS stg;
-    CREATE SCHEMA IF NOT EXISTS etl;
 
-    -- счётчики
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_month_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_ranges_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_categories_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_products_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_vendors_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_storages_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_personnel_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.dim_document_types_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.fact_purchase_month_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.fact_sales_month_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.fact_personnel_month_seq START WITH 1;
-    CREATE SEQUENCE IF NOT EXISTS olap.fact_stock_month_seq START WITH 1;
-
-    -- таблицы
-    CREATE TABLE IF NOT EXISTS olap.dim_month (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_month_seq') PRIMARY KEY,
-        month_code integer NOT NULL,
-        month_start date NOT NULL,
-        month_end date NOT NULL,
-        month_name varchar(20) NOT NULL,
-        year smallint NOT NULL,
-        quarter_no smallint NOT NULL,
-        quarter_name varchar(20) NOT NULL
-    );
-
+    -- единицы измерения
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_ranges;
     CREATE TABLE IF NOT EXISTS olap.dim_ranges (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_ranges_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_ranges') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        group_external_id bigint,
+        short_name text,
         name text NOT NULL,
-        factor numeric(12, 3) NOT NULL
+        date_add timestamp NOT NULL DEFAULT now()
     );
+    ALTER SEQUENCE olap.seq_dim_ranges OWNED BY olap.dim_ranges.id;
 
+    COMMENT ON TABLE olap.dim_ranges IS 'Единицы измерения';
+    COMMENT ON COLUMN olap.dim_ranges.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_ranges.external_id IS 'Код единицы в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_ranges.group_external_id IS 'Код группы единиц в исходной базе';
+    COMMENT ON COLUMN olap.dim_ranges.short_name IS 'Краткое обозначение';
+    COMMENT ON COLUMN olap.dim_ranges.name IS 'Наименование единицы измерения';
+    COMMENT ON COLUMN olap.dim_ranges.date_add IS 'Дата добавления записи';
+
+    -- категории товаров
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_categories;
     CREATE TABLE IF NOT EXISTS olap.dim_categories (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_categories_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
-        name text NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.dim_products (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_products_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_categories') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
         name text NOT NULL,
-        category_id bigint,
-        range_id bigint
+        parent_id bigint,
+        date_add timestamp NOT NULL DEFAULT now()
     );
+    ALTER SEQUENCE olap.seq_dim_categories OWNED BY olap.dim_categories.id;
 
-    CREATE TABLE IF NOT EXISTS olap.dim_vendors (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_vendors_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
-        name text NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.dim_storages (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_storages_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
-        name text NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.dim_personnel (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_personnel_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
-        full_name text NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.dim_document_types (
-        id bigint NOT NULL DEFAULT nextval('olap.dim_document_types_seq') PRIMARY KEY,
-        external_id bigint NOT NULL,
-        name text NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.fact_purchase_month (
-        id bigint NOT NULL DEFAULT nextval('olap.fact_purchase_month_seq') PRIMARY KEY,
-        month_id bigint NOT NULL,
-        product_id bigint,
-        vendor_id bigint,
-        storage_id bigint,
-        document_type_id bigint,
-        range_id bigint,
-        quantity numeric(18, 4) NOT NULL DEFAULT 0,
-        amount numeric(18, 2) NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.fact_sales_month (
-        id bigint NOT NULL DEFAULT nextval('olap.fact_sales_month_seq') PRIMARY KEY,
-        month_id bigint NOT NULL,
-        product_id bigint,
-        category_id bigint,
-        personnel_id bigint,
-        storage_id bigint,
-        range_id bigint,
-        quantity numeric(18, 4) NOT NULL DEFAULT 0,
-        revenue numeric(18, 2) NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.fact_personnel_month (
-        id bigint NOT NULL DEFAULT nextval('olap.fact_personnel_month_seq') PRIMARY KEY,
-        month_id bigint NOT NULL,
-        personnel_id bigint,
-        sessions_count integer NOT NULL DEFAULT 0,
-        error_count integer NOT NULL DEFAULT 0,
-        bonus_count integer NOT NULL DEFAULT 0,
-        bonus_amount numeric(18, 2) NOT NULL DEFAULT 0,
-        sales_revenue numeric(18, 2) NOT NULL DEFAULT 0,
-        sales_receipts integer NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS olap.fact_stock_month (
-        id bigint NOT NULL DEFAULT nextval('olap.fact_stock_month_seq') PRIMARY KEY,
-        month_id bigint NOT NULL,
-        product_id bigint,
-        storage_id bigint,
-        range_id bigint,
-        quantity_open numeric(18, 4) NOT NULL DEFAULT 0,
-        quantity_in numeric(18, 4) NOT NULL DEFAULT 0,
-        quantity_out numeric(18, 4) NOT NULL DEFAULT 0,
-        quantity_close numeric(18, 4) NOT NULL DEFAULT 0
-    );
-
-    -- ключи
-    ALTER SEQUENCE olap.dim_month_seq OWNED BY olap.dim_month.id;
-    ALTER SEQUENCE olap.dim_ranges_seq OWNED BY olap.dim_ranges.id;
-    ALTER SEQUENCE olap.dim_categories_seq OWNED BY olap.dim_categories.id;
-    ALTER SEQUENCE olap.dim_products_seq OWNED BY olap.dim_products.id;
-    ALTER SEQUENCE olap.dim_vendors_seq OWNED BY olap.dim_vendors.id;
-    ALTER SEQUENCE olap.dim_storages_seq OWNED BY olap.dim_storages.id;
-    ALTER SEQUENCE olap.dim_personnel_seq OWNED BY olap.dim_personnel.id;
-    ALTER SEQUENCE olap.dim_document_types_seq OWNED BY olap.dim_document_types.id;
-    ALTER SEQUENCE olap.fact_purchase_month_seq OWNED BY olap.fact_purchase_month.id;
-    ALTER SEQUENCE olap.fact_sales_month_seq OWNED BY olap.fact_sales_month.id;
-    ALTER SEQUENCE olap.fact_personnel_month_seq OWNED BY olap.fact_personnel_month.id;
-    ALTER SEQUENCE olap.fact_stock_month_seq OWNED BY olap.fact_stock_month.id;
-
-    ALTER TABLE olap.dim_month ADD CONSTRAINT uq_dim_month_code UNIQUE (month_code);
-    ALTER TABLE olap.dim_ranges ADD CONSTRAINT uq_dim_ranges_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_categories ADD CONSTRAINT uq_dim_categories_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_products ADD CONSTRAINT uq_dim_products_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_vendors ADD CONSTRAINT uq_dim_vendors_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_storages ADD CONSTRAINT uq_dim_storages_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_personnel ADD CONSTRAINT uq_dim_personnel_external_id UNIQUE (external_id);
-    ALTER TABLE olap.dim_document_types ADD CONSTRAINT uq_dim_document_types_external_id UNIQUE (external_id);
-
-    ALTER TABLE olap.dim_products
-        ADD CONSTRAINT fk_dim_products_category FOREIGN KEY (category_id) REFERENCES olap.dim_categories (id);
-    ALTER TABLE olap.dim_products
-        ADD CONSTRAINT fk_dim_products_range FOREIGN KEY (range_id) REFERENCES olap.dim_ranges (id);
-
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_month FOREIGN KEY (month_id) REFERENCES olap.dim_month (id);
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_product FOREIGN KEY (product_id) REFERENCES olap.dim_products (id);
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_vendor FOREIGN KEY (vendor_id) REFERENCES olap.dim_vendors (id);
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_storage FOREIGN KEY (storage_id) REFERENCES olap.dim_storages (id);
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_document_type FOREIGN KEY (document_type_id) REFERENCES olap.dim_document_types (id);
-    ALTER TABLE olap.fact_purchase_month
-        ADD CONSTRAINT fk_fact_purchase_month_range FOREIGN KEY (range_id) REFERENCES olap.dim_ranges (id);
-
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_month FOREIGN KEY (month_id) REFERENCES olap.dim_month (id);
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_product FOREIGN KEY (product_id) REFERENCES olap.dim_products (id);
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_category FOREIGN KEY (category_id) REFERENCES olap.dim_categories (id);
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_personnel FOREIGN KEY (personnel_id) REFERENCES olap.dim_personnel (id);
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_storage FOREIGN KEY (storage_id) REFERENCES olap.dim_storages (id);
-    ALTER TABLE olap.fact_sales_month
-        ADD CONSTRAINT fk_fact_sales_month_range FOREIGN KEY (range_id) REFERENCES olap.dim_ranges (id);
-
-    ALTER TABLE olap.fact_personnel_month
-        ADD CONSTRAINT fk_fact_personnel_month_month FOREIGN KEY (month_id) REFERENCES olap.dim_month (id);
-    ALTER TABLE olap.fact_personnel_month
-        ADD CONSTRAINT fk_fact_personnel_month_personnel FOREIGN KEY (personnel_id) REFERENCES olap.dim_personnel (id);
-
-    ALTER TABLE olap.fact_stock_month
-        ADD CONSTRAINT fk_fact_stock_month_month FOREIGN KEY (month_id) REFERENCES olap.dim_month (id);
-    ALTER TABLE olap.fact_stock_month
-        ADD CONSTRAINT fk_fact_stock_month_product FOREIGN KEY (product_id) REFERENCES olap.dim_products (id);
-    ALTER TABLE olap.fact_stock_month
-        ADD CONSTRAINT fk_fact_stock_month_storage FOREIGN KEY (storage_id) REFERENCES olap.dim_storages (id);
-    ALTER TABLE olap.fact_stock_month
-        ADD CONSTRAINT fk_fact_stock_month_range FOREIGN KEY (range_id) REFERENCES olap.dim_ranges (id);
-
-    -- комментарии
-    COMMENT ON TABLE olap.dim_month IS 'Ресурс Время: месяцы';
-    COMMENT ON TABLE olap.dim_ranges IS 'Размеры и порции';
     COMMENT ON TABLE olap.dim_categories IS 'Категории товаров';
-    COMMENT ON TABLE olap.dim_products IS 'Товары';
-    COMMENT ON TABLE olap.dim_vendors IS 'Поставщики';
-    COMMENT ON TABLE olap.dim_storages IS 'Склады';
-    COMMENT ON TABLE olap.dim_personnel IS 'Сотрудники';
-    COMMENT ON TABLE olap.dim_document_types IS 'Типы документов';
-    COMMENT ON TABLE olap.fact_purchase_month IS 'Закупки по месяцам';
-    COMMENT ON TABLE olap.fact_sales_month IS 'Продажи по месяцам';
-    COMMENT ON TABLE olap.fact_personnel_month IS 'Работа персонала по месяцам';
-    COMMENT ON TABLE olap.fact_stock_month IS 'Остатки по месяцам';
+    COMMENT ON COLUMN olap.dim_categories.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_categories.external_id IS 'Код категории в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_categories.name IS 'Наименование категории';
+    COMMENT ON COLUMN olap.dim_categories.parent_id IS 'Внутренний код родительской категории';
+    COMMENT ON COLUMN olap.dim_categories.date_add IS 'Дата добавления записи';
 
-    COMMIT;
+    -- товары
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_products;
+    CREATE TABLE IF NOT EXISTS olap.dim_products (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_products') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        code text,
+        name text NOT NULL,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_products OWNED BY olap.dim_products.id;
+
+    COMMENT ON TABLE olap.dim_products IS 'Товары';
+    COMMENT ON COLUMN olap.dim_products.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_products.external_id IS 'Код товара в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_products.code IS 'Внешний код товара (productid)';
+    COMMENT ON COLUMN olap.dim_products.name IS 'Наименование товара';
+    COMMENT ON COLUMN olap.dim_products.date_add IS 'Дата добавления записи';
+
+    -- поставщики
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_vendors;
+    CREATE TABLE IF NOT EXISTS olap.dim_vendors (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_vendors') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        name text NOT NULL,
+        group_external_id bigint,
+        group_name text,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_vendors OWNED BY olap.dim_vendors.id;
+
+    COMMENT ON TABLE olap.dim_vendors IS 'Поставщики';
+    COMMENT ON COLUMN olap.dim_vendors.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_vendors.external_id IS 'Код поставщика в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_vendors.name IS 'Наименование поставщика';
+    COMMENT ON COLUMN olap.dim_vendors.group_external_id IS 'Код группы поставщиков в исходной базе';
+    COMMENT ON COLUMN olap.dim_vendors.group_name IS 'Наименование группы поставщиков';
+    COMMENT ON COLUMN olap.dim_vendors.date_add IS 'Дата добавления записи';
+
+    -- виды оплаты
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_payment_types;
+    CREATE TABLE IF NOT EXISTS olap.dim_payment_types (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_payment_types') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        name text NOT NULL,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_payment_types OWNED BY olap.dim_payment_types.id;
+
+    COMMENT ON TABLE olap.dim_payment_types IS 'Виды оплаты';
+    COMMENT ON COLUMN olap.dim_payment_types.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_payment_types.external_id IS 'Код вида оплаты в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_payment_types.name IS 'Наименование вида оплаты';
+    COMMENT ON COLUMN olap.dim_payment_types.date_add IS 'Дата добавления записи';
+
+    -- сотрудники
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_personnel;
+    CREATE TABLE IF NOT EXISTS olap.dim_personnel (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_personnel') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        full_name text NOT NULL,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_personnel OWNED BY olap.dim_personnel.id;
+
+    COMMENT ON TABLE olap.dim_personnel IS 'Сотрудники';
+    COMMENT ON COLUMN olap.dim_personnel.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_personnel.external_id IS 'Код сотрудника в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_personnel.full_name IS 'Фамилия, имя и отчество сотрудника';
+    COMMENT ON COLUMN olap.dim_personnel.date_add IS 'Дата добавления записи';
+
+    -- склады
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_storages;
+    CREATE TABLE IF NOT EXISTS olap.dim_storages (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_storages') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        name text NOT NULL,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_storages OWNED BY olap.dim_storages.id;
+
+    COMMENT ON TABLE olap.dim_storages IS 'Склады';
+    COMMENT ON COLUMN olap.dim_storages.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_storages.external_id IS 'Код склада в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_storages.name IS 'Наименование склада';
+    COMMENT ON COLUMN olap.dim_storages.date_add IS 'Дата добавления записи';
+
+    -- причины списания
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_reasons;
+    CREATE TABLE IF NOT EXISTS olap.dim_reasons (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_reasons') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        name text NOT NULL,
+        parent_id bigint,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_reasons OWNED BY olap.dim_reasons.id;
+
+    COMMENT ON TABLE olap.dim_reasons IS 'Причины списания';
+    COMMENT ON COLUMN olap.dim_reasons.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_reasons.external_id IS 'Код причины в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_reasons.name IS 'Наименование причины';
+    COMMENT ON COLUMN olap.dim_reasons.parent_id IS 'Внутренний код родительской причины';
+    COMMENT ON COLUMN olap.dim_reasons.date_add IS 'Дата добавления записи';
+
+    -- типы документов
+    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_document_types;
+    CREATE TABLE IF NOT EXISTS olap.dim_document_types (
+        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_document_types') PRIMARY KEY,
+        external_id bigint NOT NULL UNIQUE,
+        name text NOT NULL,
+        date_add timestamp NOT NULL DEFAULT now()
+    );
+    ALTER SEQUENCE olap.seq_dim_document_types OWNED BY olap.dim_document_types.id;
+
+    COMMENT ON TABLE olap.dim_document_types IS 'Типы документов';
+    COMMENT ON COLUMN olap.dim_document_types.id IS 'Внутренний код';
+    COMMENT ON COLUMN olap.dim_document_types.external_id IS 'Код типа документа в исходной базе Front';
+    COMMENT ON COLUMN olap.dim_document_types.name IS 'Наименование типа документа';
+    COMMENT ON COLUMN olap.dim_document_types.date_add IS 'Дата добавления записи';
 END $$;

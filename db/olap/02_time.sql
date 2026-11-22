@@ -1,10 +1,32 @@
--- календарь месяцев
+-- OLAP: ресурс время
+
 DO $$
 BEGIN
-    TRUNCATE TABLE olap.dim_month RESTART IDENTITY CASCADE;
+    CREATE SCHEMA IF NOT EXISTS olap;
 
-    INSERT INTO olap.dim_month (
-        month_code,
+    CREATE TABLE IF NOT EXISTS olap.dim_time (
+        id bigint NOT NULL PRIMARY KEY,
+        month_start date NOT NULL,
+        month_end date NOT NULL,
+        month_name text NOT NULL,
+        year smallint NOT NULL,
+        quarter_no smallint NOT NULL,
+        quarter_name text NOT NULL
+    );
+
+    COMMENT ON TABLE olap.dim_time IS 'Время: месяцы и кварталы';
+    COMMENT ON COLUMN olap.dim_time.id IS 'Код месяца в формате YYYYMM';
+    COMMENT ON COLUMN olap.dim_time.month_start IS 'Дата начала месяца';
+    COMMENT ON COLUMN olap.dim_time.month_end IS 'Дата окончания месяца';
+    COMMENT ON COLUMN olap.dim_time.month_name IS 'Название месяца';
+    COMMENT ON COLUMN olap.dim_time.year IS 'Год';
+    COMMENT ON COLUMN olap.dim_time.quarter_no IS 'Номер квартала';
+    COMMENT ON COLUMN olap.dim_time.quarter_name IS 'Название квартала';
+
+    TRUNCATE TABLE olap.dim_time;
+
+    INSERT INTO olap.dim_time (
+        id,
         month_start,
         month_end,
         month_name,
@@ -13,7 +35,7 @@ BEGIN
         quarter_name
     )
     SELECT
-        TO_CHAR(d, 'YYYYMM')::integer,
+        TO_CHAR(d, 'YYYYMM')::bigint,
         d::date,
         (d + INTERVAL '1 month - 1 day')::date,
         (ARRAY[
@@ -28,6 +50,4 @@ BEGIN
         '2025-12-01'::date,
         INTERVAL '1 month'
     ) AS d;
-
-    COMMIT;
 END $$;
