@@ -135,6 +135,7 @@ BEGIN
         external_id bigint NOT NULL UNIQUE,
         name text NOT NULL,
         parent_id bigint,
+        parent_name text,
         date_add timestamp NOT NULL DEFAULT now()
     );
     ALTER SEQUENCE olap.seq_dim_reasons OWNED BY olap.dim_reasons.id;
@@ -144,21 +145,6 @@ BEGIN
     COMMENT ON COLUMN olap.dim_reasons.external_id IS 'Код причины в исходной базе Front';
     COMMENT ON COLUMN olap.dim_reasons.name IS 'Наименование причины';
     COMMENT ON COLUMN olap.dim_reasons.parent_id IS 'Внутренний код родительской причины';
+    COMMENT ON COLUMN olap.dim_reasons.parent_name IS 'Наименование родительской причины';
     COMMENT ON COLUMN olap.dim_reasons.date_add IS 'Дата добавления записи';
-
-    -- типы документов
-    CREATE SEQUENCE IF NOT EXISTS olap.seq_dim_document_types;
-    CREATE TABLE IF NOT EXISTS olap.dim_document_types (
-        id bigint NOT NULL DEFAULT nextval('olap.seq_dim_document_types') PRIMARY KEY,
-        external_id bigint NOT NULL UNIQUE,
-        name text NOT NULL,
-        date_add timestamp NOT NULL DEFAULT now()
-    );
-    ALTER SEQUENCE olap.seq_dim_document_types OWNED BY olap.dim_document_types.id;
-
-    COMMENT ON TABLE olap.dim_document_types IS 'Типы документов';
-    COMMENT ON COLUMN olap.dim_document_types.id IS 'Внутренний код';
-    COMMENT ON COLUMN olap.dim_document_types.external_id IS 'Код типа документа в исходной базе Front';
-    COMMENT ON COLUMN olap.dim_document_types.name IS 'Наименование типа документа';
-    COMMENT ON COLUMN olap.dim_document_types.date_add IS 'Дата добавления записи';
 END $$;

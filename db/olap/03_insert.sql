@@ -8,8 +8,7 @@ TRUNCATE TABLE
     olap.dim_payment_types,
     olap.dim_personnel,
     olap.dim_storages,
-    olap.dim_reasons,
-    olap.dim_document_types
+    olap.dim_reasons
 RESTART IDENTITY;
 
 DO $$
@@ -2383,30 +2382,9 @@ BEGIN
     FROM olap.dim_reasons AS p
     WHERE r.parent_id = p.external_id;
 
-    -- типы документов
-    insert into olap.dim_document_types (external_id, name) values (1, 'Ввод состава нового рецепта');
-    insert into olap.dim_document_types (external_id, name) values (2, 'Редактирование рецепта');
-    insert into olap.dim_document_types (external_id, name) values (3, 'Установка цен продуктов');
-    insert into olap.dim_document_types (external_id, name) values (4, 'Поступление продуктов');
-    insert into olap.dim_document_types (external_id, name) values (5, 'Списание продуктов');
-    insert into olap.dim_document_types (external_id, name) values (6, 'Товарный чек');
-    insert into olap.dim_document_types (external_id, name) values (7, 'Перемещение продуктов');
-    insert into olap.dim_document_types (external_id, name) values (8, 'Инвентаризация');
-    insert into olap.dim_document_types (external_id, name) values (9, 'Счет-фактура полученная');
-    insert into olap.dim_document_types (external_id, name) values (10, 'Товарно-транспортная накладная');
-    insert into olap.dim_document_types (external_id, name) values (11, 'Поступление в кассу');
-    insert into olap.dim_document_types (external_id, name) values (12, 'Изъятие из кассы');
-    insert into olap.dim_document_types (external_id, name) values (13, 'Поступление изделий');
-    insert into olap.dim_document_types (external_id, name) values (14, 'Возврат изделий');
-    insert into olap.dim_document_types (external_id, name) values (15, 'Реализация продукции');
-    insert into olap.dim_document_types (external_id, name) values (16, 'Списание изделий');
-    insert into olap.dim_document_types (external_id, name) values (17, 'Приходно-кассовый ордер');
-    insert into olap.dim_document_types (external_id, name) values (18, 'Расходно-кассовый ордер');
-    insert into olap.dim_document_types (external_id, name) values (19, 'Предварительный заказ');
-    insert into olap.dim_document_types (external_id, name) values (20, 'Инвентаризация изделий');
-    insert into olap.dim_document_types (external_id, name) values (21, 'Акт поступления в кассу');
-    insert into olap.dim_document_types (external_id, name) values (22, 'Пополнение счета');
-    insert into olap.dim_document_types (external_id, name) values (23, 'Списание со счета');
-    insert into olap.dim_document_types (external_id, name) values (24, 'Корректировка остатков');
-    insert into olap.dim_document_types (external_id, name) values (27, 'Бронирование апартаментов');
+    -- причины списания: название родительской причины
+    UPDATE olap.dim_reasons AS r
+    SET parent_name = p.name
+    FROM olap.dim_reasons AS p
+    WHERE r.parent_id = p.id;
 END $$;
